@@ -24,12 +24,10 @@ STREAM_TYPES = [
     streams.DeletedTransactionsStream,
     streams.InvoicesStream,
     streams.ItemsStream,
-    streams.Path,
     streams.PaymentTermsStream,
     streams.RegistersStream,
     streams.RevenueEntriesStream,
     streams.RevenueRecognitionMethodsStream,
-    streams.SaaSOpticsStream,
     streams.SalesOrdersStream,
     streams.TransactionsStream
 ]
