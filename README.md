@@ -2,35 +2,14 @@
 
 `tap-saasoptics` is a Singer tap for saasoptics.
 
-Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
+Pulls raw data from the SaaSOptics v1.0 API
+> N.B. SaaSOptics API is not being developed as it is merged under the name of [MAXIO](https://www.maxio.com/about).
 
-This Tap:
-- Pulls raw data from the SaaSOptics v1.0 API
-- Extracts the following resources:
-  - Customers
-  - Contracts
-  - Invoices
-  - Items
-  - Transactions
-  - Billing Desriptions
-  - Accounts
-  - Auto Renewal Profiles
-  - Billing Methods
-  - Country Codes
-  - Currency Codes
-  - Payment Terms
-  - Registers
-  - Revenue Entries
-  - Revenue Recognition Methods
-  - Sales Orders
-- Outputs the schema for each resource
-- Incrementally pulls data based on the input state
+Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
 
 <!--
 
 Developer TODO: Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPi repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
-
-
 
 ## Installation
 
