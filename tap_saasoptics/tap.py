@@ -2,56 +2,67 @@
 
 from __future__ import annotations
 
+from typing import List
+
 from singer_sdk import Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
 
-# TODO: Import your custom stream types here:
 from tap_saasoptics import streams
+
+STREAM_TYPES = [
+    streams.ContractsStream
+]
 
 
 class Tapsaasoptics(Tap):
-    """saasoptics tap class."""
+    """SaaSOptics tap class."""
 
     name = "tap-saasoptics"
 
-    # TODO: Update this section with the actual config values you expect:
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "auth_token",
+            "api_token",
             th.StringType,
             required=True,
             secret=True,  # Flag config as protected.
-            description="The token to authenticate against the API service",
+            description="Your API token.",
         ),
         th.Property(
-            "project_ids",
-            th.ArrayType(th.StringType),
+            "account_name",
+            th.StringType,
             required=True,
-            description="Project IDs to replicate",
+            description="The account_name is everything between `.saasoptics.com.` and `api` in the SaaSOptics URL.",
+        ),
+        th.Property(
+            "server_subdomain",
+            th.StringType,
+            required=True,
+            description="The server_subdomain is everything before `.saasoptics.com.`.",
         ),
         th.Property(
             "start_date",
             th.DateTimeType,
-            description="The earliest record date to sync",
+            description="Start date for date-filtered endpoints.",
         ),
         th.Property(
-            "api_url",
+            "user_agent",
             th.StringType,
-            default="https://api.mysample.com",
-            description="The url for the API service",
+            description="tap-saasoptics <api_user_email@your_company.com>.",
         ),
+        th.Property(
+            "custom_field_prefix",
+            th.ArrayType(th.StringType),
+            description="If added, all fields with these prefixes are included into the output."
+        )
     ).to_dict()
 
-    def discover_streams(self) -> list[streams.saasopticsStream]:
+    def discover_streams(self) -> list[streams.SaaSOpticsStream]:
         """Return a list of discovered streams.
 
         Returns:
             A list of discovered streams.
         """
-        return [
-            streams.GroupsStream(self),
-            streams.UsersStream(self),
-        ]
+        return [stream(tap=self) for stream in STREAM_TYPES]
 
 
 if __name__ == "__main__":
