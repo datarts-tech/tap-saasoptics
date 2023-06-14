@@ -10,7 +10,28 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 from tap_saasoptics import streams
 
 STREAM_TYPES = [
-    streams.ContractsStream
+    streams.AccountsStream,
+    streams.AutoRenewalProfilesStream,
+    streams.BillingDescriptionsStream,
+    streams.BillingMethodsStream,
+    streams.ContractsStream,
+    streams.CountryCodeStream,
+    streams.CurrencyCodesStream,
+    streams.CustomersStream,
+    streams.DeletedContractsStream,
+    streams.DeletedInvoicesStream,
+    streams.DeletedRevenueEntriesStream,
+    streams.DeletedTransactionsStream,
+    streams.InvoicesStream,
+    streams.ItemsStream,
+    streams.Path,
+    streams.PaymentTermsStream,
+    streams.RegistersStream,
+    streams.RevenueEntriesStream,
+    streams.RevenueRecognitionMethodsStream,
+    streams.SaaSOpticsStream,
+    streams.SalesOrdersStream,
+    streams.TransactionsStream
 ]
 
 
