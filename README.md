@@ -4,9 +4,33 @@
 
 Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
 
+This Tap:
+- Pulls raw data from the SaaSOptics v1.0 API
+- Extracts the following resources:
+  - Customers
+  - Contracts
+  - Invoices
+  - Items
+  - Transactions
+  - Billing Desriptions
+  - Accounts
+  - Auto Renewal Profiles
+  - Billing Methods
+  - Country Codes
+  - Currency Codes
+  - Payment Terms
+  - Registers
+  - Revenue Entries
+  - Revenue Recognition Methods
+  - Sales Orders
+- Outputs the schema for each resource
+- Incrementally pulls data based on the input state
+
 <!--
 
 Developer TODO: Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPi repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
+
+
 
 ## Installation
 
@@ -16,24 +40,47 @@ Install from PyPi:
 pipx install tap-saasoptics
 ```
 
+-->
+## Installation
+
 Install from GitHub:
 
 ```bash
-pipx install git+https://github.com/ORG_NAME/tap-saasoptics.git@main
+pipx install git+https://github.com/datarts-tech/tap-saasoptics.git@master
 ```
 
--->
+## Capabilities
 
-## Configuration
+* `catalog`
+* `state`
+* `discover`
+* `about`
+* `stream-maps`
+* `schema-flattening`
+* `batch`
 
-### Accepted Config Options
+## Settings
+
+| Setting             | Required | Default | Description |
+|:--------------------|:--------:|:-------:|:------------|
+| api_token           | True     | None    | Your API token. |
+| account_name        | True     | None    | The account_name is everything between `.saasoptics.com.` and `api` in the SaaSOptics URL. |
+| server_subdomain    | True     | None    | The server_subdomain is everything before `.saasoptics.com.`. |
+| start_date          | False    | None    | Start date for date-filtered endpoints. |
+| user_agent          | False    | None    | tap-saasoptics <api_user_email@your_company.com>. |
+| custom_field_prefix | False    | None    | If added, all fields with these prefixes are included into the output. |
+| stream_maps         | False    | None    | Config object for stream maps capability. For more information check out [Stream Maps](https://sdk.meltano.com/en/latest/stream_maps.html). |
+| stream_map_config   | False    | None    | User-defined config values to be used within map expressions. |
+| flattening_enabled  | False    | None    | 'True' to enable schema flattening and automatically expand nested properties. |
+| flattening_max_depth| False    | None    | The max depth to flatten schemas. |
+| batch_config        | False    | None    |             |
 
 <!--
 Developer TODO: Provide a list of config options accepted by the tap.
 
 This section can be created by copy-pasting the CLI output from:
 
-```
+```None
 tap-saasoptics --about --format=markdown
 ```
 -->
