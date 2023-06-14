@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "properties": {
     "always_use_amount_as_normalized_amount": {
       "type": ["null", "boolean"]
