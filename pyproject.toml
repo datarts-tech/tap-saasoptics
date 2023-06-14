@@ -3,7 +3,7 @@ name = "tap-saasoptics"
 version = "0.0.1"
 description = "`tap-saasoptics` is a Singer tap for saasoptics, built with the Meltano Singer SDK."
 readme = "README.md"
-authors = ["developers@datarts.tech"]
+authors = ["Data arts <developers@datarts.tech>"]
 keywords = [
     "ELT",
     "saasoptics",
