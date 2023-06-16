@@ -36,6 +36,7 @@ class SaaSOpticsStream(RESTStream):
 
     _is_schema_updated = False
     _incremental_key = None
+    _convert_to_float = None
 
     @property
     def url_base(self) -> str:
@@ -65,6 +66,14 @@ class SaaSOpticsStream(RESTStream):
             else:
                 self._incremental_key = f"{self.replication_key}__gte"
         return self._incremental_key
+    
+    @property
+    def convert_to_float(self):
+        """Extracts the list of columns which should be converted to floats."""
+        if self._convert_to_float is None:
+            schema_properties = self.schema.get('properties')
+            self._convert_to_float = [col for col, dtype in schema_properties.items() if 'number' in dtype.get('type')]
+        return self._convert_to_float
 
     def get_new_paginator(self):
         """Method for handling the pagination."""
@@ -91,7 +100,6 @@ class SaaSOpticsStream(RESTStream):
             params["sort"] = "asc"
             params["order_by"] = self.incremental_key
             params[self.incremental_key] = self.get_starting_replication_key_value(context)
-        self.logger.info(f'params - {params}')
         return params
 
     def _update_schema_with_custom_fields(self, keys):
@@ -108,7 +116,7 @@ class SaaSOpticsStream(RESTStream):
         row: dict,
         context: dict | None = None,  # noqa: ARG002
     ) -> dict | None:
-        """Use a single record to update schema with custom fields.
+        """Use a single record to update schema with custom fields and transform string decimals to float.
 
         Args:
             row: An individual record from the stream.
@@ -119,4 +127,13 @@ class SaaSOpticsStream(RESTStream):
         """
         if not self._is_schema_updated and self.config.get('custom_field_prefix'):
             self._update_schema_with_custom_fields(row.keys())
+
+        # Do an transformation of string to float
+        for col_name, value in row.items():
+            if col_name in self.convert_to_float:
+                try:
+                    row[col_name] = float(value)
+                # Handling None
+                except TypeError:
+                    pass
         return row
