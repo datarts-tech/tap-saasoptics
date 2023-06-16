@@ -5,29 +5,43 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+import json
 import requests
+from collections.abc import MutableMapping
+
 from singer_sdk.authenticators import APIKeyAuthenticator
-from singer_sdk.helpers.jsonpath import extract_jsonpath
-from singer_sdk.pagination import BaseAPIPaginator  # noqa: TCH002
+from singer_sdk.pagination import BasePageNumberPaginator
 from singer_sdk.streams import RESTStream
+from singer_sdk import typing as th  # JSON schema typing helpers
 
 _Auth = Callable[[requests.PreparedRequest], requests.PreparedRequest]
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
+API_VERSION = 'v1.0'
+    
 
-class saasopticsStream(RESTStream):
-    """saasoptics stream class."""
+class SaaSOpticsNumberPaginator(BasePageNumberPaginator):
+    """SaaSOptics paginator class."""
+
+    def has_more(self, response: requests.Response) -> bool:
+        """Checking if the `next` key is available in the response."""
+        data = response.json()
+        return data.get('next') is not None
+
+
+class SaaSOpticsStream(RESTStream):
+    """SaaSOptics stream class."""
+
+    records_jsonpath = "$.results[*]"
+
+    _is_schema_updated = False
+    _incremental_key = None
+    _convert_to_float = None
 
     @property
     def url_base(self) -> str:
         """Return the API URL root, configurable via tap settings."""
-        # TODO: hardcode a value here, or retrieve it from self.config
-        return "https://api.mysample.com"
-
-    records_jsonpath = "$[*]"  # Or override `parse_response`.
-
-    # Set this value or override `get_new_paginator`.
-    next_page_token_jsonpath = "$.next_page"  # noqa: S105
+        return f'https://{self.config.get("server_subdomain")}.saasoptics.com/{self.config.get("account_name")}/api/{API_VERSION}'
 
     @property
     def authenticator(self) -> APIKeyAuthenticator:
@@ -38,39 +52,32 @@ class saasopticsStream(RESTStream):
         """
         return APIKeyAuthenticator.create_for_stream(
             self,
-            key="x-api-key",
-            value=self.config.get("auth_token", ""),
+            key="Authorization",
+            value=f'Token {self.config.get("api_token")}',
             location="header",
         )
-
+    
     @property
-    def http_headers(self) -> dict:
-        """Return the http headers needed.
+    def incremental_key(self):
+        """Custom handler of the key which is used for incremental replication."""
+        if self._incremental_key is None:
+            if self.name == 'transactions':
+                self._incremental_key = 'auditentry__modified__gte'
+            else:
+                self._incremental_key = f"{self.replication_key}__gte"
+        return self._incremental_key
+    
+    @property
+    def convert_to_float(self):
+        """Extracts the list of columns which should be converted to floats."""
+        if self._convert_to_float is None:
+            schema_properties = self.schema.get('properties')
+            self._convert_to_float = [col for col, dtype in schema_properties.items() if 'number' in dtype.get('type')]
+        return self._convert_to_float
 
-        Returns:
-            A dictionary of HTTP headers.
-        """
-        headers = {}
-        if "user_agent" in self.config:
-            headers["User-Agent"] = self.config.get("user_agent")
-        # If not using an authenticator, you may also provide inline auth headers:
-        # headers["Private-Token"] = self.config.get("auth_token")  # noqa: ERA001
-        return headers
-
-    def get_new_paginator(self) -> BaseAPIPaginator:
-        """Create a new pagination helper instance.
-
-        If the source API can make use of the `next_page_token_jsonpath`
-        attribute, or it contains a `X-Next-Page` header in the response
-        then you can remove this method.
-
-        If you need custom pagination that uses page numbers, "next" links, or
-        other approaches, please read the guide: https://sdk.meltano.com/en/v0.25.0/guides/pagination-classes.html.
-
-        Returns:
-            A pagination helper instance.
-        """
-        return super().get_new_paginator()
+    def get_new_paginator(self):
+        """Method for handling the pagination."""
+        return SaaSOpticsNumberPaginator(start_value=1)
 
     def get_url_params(
         self,
@@ -91,46 +98,25 @@ class saasopticsStream(RESTStream):
             params["page"] = next_page_token
         if self.replication_key:
             params["sort"] = "asc"
-            params["order_by"] = self.replication_key
+            params["order_by"] = self.incremental_key
+            params[self.incremental_key] = self.get_starting_replication_key_value(context)
         return params
 
-    def prepare_request_payload(
-        self,
-        context: dict | None,  # noqa: ARG002
-        next_page_token: Any | None,  # noqa: ARG002
-    ) -> dict | None:
-        """Prepare the data payload for the REST API request.
-
-        By default, no payload will be sent (return None).
-
-        Args:
-            context: The stream context.
-            next_page_token: The next page index or value.
-
-        Returns:
-            A dictionary with the JSON body for a POST requests.
-        """
-        # TODO: Delete this method if no payload is required. (Most REST APIs.)
-        return None
-
-    def parse_response(self, response: requests.Response) -> Iterable[dict]:
-        """Parse the response and return an iterator of result records.
-
-        Args:
-            response: The HTTP ``requests.Response`` object.
-
-        Yields:
-            Each record from the source.
-        """
-        # TODO: Parse response body and return a set of records.
-        yield from extract_jsonpath(self.records_jsonpath, input=response.json())
+    def _update_schema_with_custom_fields(self, keys):
+        for prefix in self.config.get('custom_field_prefix'):
+            for key in keys:
+                if key.startswith(prefix) and key not in self._schema['properties']:
+                    # Tweak with internal variable for schema property
+                    # TODO: add custom data type mapping
+                    self._schema['properties'].update({key: {'type': ['string', 'null']}})
+        self._is_schema_updated = True
 
     def post_process(
         self,
         row: dict,
         context: dict | None = None,  # noqa: ARG002
     ) -> dict | None:
-        """As needed, append or transform raw data to match expected structure.
+        """Use a single record to update schema with custom fields and transform string decimals to float.
 
         Args:
             row: An individual record from the stream.
@@ -139,5 +125,15 @@ class saasopticsStream(RESTStream):
         Returns:
             The updated record dictionary, or ``None`` to skip the record.
         """
-        # TODO: Delete this method if not needed.
+        if not self._is_schema_updated and self.config.get('custom_field_prefix'):
+            self._update_schema_with_custom_fields(row.keys())
+
+        # Do an transformation of string to float
+        for col_name, value in row.items():
+            if col_name in self.convert_to_float:
+                try:
+                    row[col_name] = float(value)
+                # Handling None
+                except TypeError:
+                    pass
         return row
