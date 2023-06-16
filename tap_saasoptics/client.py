@@ -35,6 +35,7 @@ class SaaSOpticsStream(RESTStream):
     records_jsonpath = "$.results[*]"
 
     _is_schema_updated = False
+    _incremental_key = None
 
     @property
     def url_base(self) -> str:
@@ -55,6 +56,16 @@ class SaaSOpticsStream(RESTStream):
             location="header",
         )
     
+    @property
+    def incremental_key(self):
+        """Custom handler of the key which is used for incremental replication."""
+        if self._incremental_key is None:
+            if self.name == 'transactions':
+                self._incremental_key = 'auditentry__modified__gte'
+            else:
+                self._incremental_key = f"{self.replication_key}__gte"
+        return self._incremental_key
+
     def get_new_paginator(self):
         """Method for handling the pagination."""
         return SaaSOpticsNumberPaginator(start_value=1)
@@ -78,8 +89,9 @@ class SaaSOpticsStream(RESTStream):
             params["page"] = next_page_token
         if self.replication_key:
             params["sort"] = "asc"
-            params["order_by"] = self.replication_key
-            params[f"{self.replication_key}__gte"] = self.get_starting_replication_key_value(context)
+            params["order_by"] = self.incremental_key
+            params[self.incremental_key] = self.get_starting_replication_key_value(context)
+        self.logger.info(f'params - {params}')
         return params
 
     def _update_schema_with_custom_fields(self, keys):

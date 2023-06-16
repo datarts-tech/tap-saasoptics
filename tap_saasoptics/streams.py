@@ -40,8 +40,10 @@ class InvoicesStream(SaaSOpticsStream):
     name = "invoices"
     path = "/invoices"
     primary_keys = ["id"]
-    replication_method = "INCREMENTAL"
-    replication_key = "auditentry_modified"
+    replication_method = "FULL_TABLE"
+    # TODO: Add necessary transformations so INCREMENTAL could be used
+    # Replication key with auditentry_modified not working because some records do not have the field
+    # replication_key = "auditentry_modified"
     schema_filepath = SCHEMAS_DIR / "invoices.json"
 
 
