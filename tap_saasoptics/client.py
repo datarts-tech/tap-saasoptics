@@ -71,8 +71,14 @@ class SaaSOpticsStream(RESTStream):
     def convert_to_float(self):
         """Extracts the list of columns which should be converted to floats."""
         if self._convert_to_float is None:
-            schema_properties = self.schema.get('properties')
-            self._convert_to_float = [col for col, dtype in schema_properties.items() if 'number' in dtype.get('type')]
+            self._convert_to_float = list()
+            schema_properties = self.schema.get('properties', {})
+            for col, attributes in schema_properties.items():
+                # We don't care about complex data types
+                if 'type' not in attributes.keys():
+                    continue
+                if 'number' in attributes.get('type'):
+                    self._convert_to_float.append(col)
         return self._convert_to_float
 
     def get_new_paginator(self):
