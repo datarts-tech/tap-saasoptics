@@ -47,7 +47,7 @@ pipx install git+https://github.com/datarts-tech/tap-saasoptics.git@master
 | server_subdomain    | True     | None    | The server_subdomain is everything before `.saasoptics.com.`. |
 | start_date          | False    | None    | Start date for date-filtered endpoints. |
 | user_agent          | False    | None    | tap-saasoptics <api_user_email@your_company.com>. |
-| custom_field_prefix | False    | None    | If added, all fields with these prefixes are included into the output. |
+| custom_fields       | False    | None    | All listed fields are included into specific stream. |
 | stream_maps         | False    | None    | Config object for stream maps capability. For more information check out [Stream Maps](https://sdk.meltano.com/en/latest/stream_maps.html). |
 | stream_map_config   | False    | None    | User-defined config values to be used within map expressions. |
 | flattening_enabled  | False    | None    | 'True' to enable schema flattening and automatically expand nested properties. |
