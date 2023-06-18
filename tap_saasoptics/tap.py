@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from singer_sdk import Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
 
@@ -69,9 +67,14 @@ class Tapsaasoptics(Tap):
             description="tap-saasoptics <api_user_email@your_company.com>.",
         ),
         th.Property(
-            "custom_field_prefix",
-            th.ArrayType(th.StringType),
-            description="If added, all fields with these prefixes are included into the output."
+            "custom_fields",
+            th.ArrayType(
+                th.ObjectType(
+                    th.Property("name", th.StringType),
+                    th.Property("fields", th.ArrayType(th.StringType))
+                )
+            ),
+            description="All listed fields are included into specific stream."
         )
     ).to_dict()
 
@@ -81,7 +84,7 @@ class Tapsaasoptics(Tap):
         Returns:
             A list of discovered streams.
         """
-        return [stream(tap=self) for stream in STREAM_TYPES]
+        return [stream(tap=self) for stream in STREAM_TYPES if stream == streams.ContractsStream]
 
 
 if __name__ == "__main__":

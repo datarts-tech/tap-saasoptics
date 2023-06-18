@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Any, Dict
 
 from singer_sdk import typing as th  # JSON Schema typing helpers
 

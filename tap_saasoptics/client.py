@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
-import json
 import requests
-from collections.abc import MutableMapping
 
 from singer_sdk.authenticators import APIKeyAuthenticator
 from singer_sdk.pagination import BasePageNumberPaginator
 from singer_sdk.streams import RESTStream
-from singer_sdk import typing as th  # JSON schema typing helpers
+from singer_sdk.helpers._flattening import get_flattening_options
+from singer_sdk.mapper import SameRecordTransform, StreamMap
 
 _Auth = Callable[[requests.PreparedRequest], requests.PreparedRequest]
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
@@ -81,6 +80,50 @@ class SaaSOpticsStream(RESTStream):
                     self._convert_to_float.append(col)
         return self._convert_to_float
 
+    @property
+    def schema(self) -> dict:
+        """Overwrites self._schema with additional custom_fields."""
+        # Return object is self._schema
+        _schema = super().schema
+        if not self._is_schema_updated and self.config.get('custom_fields'):
+            self._update_schema_with_custom_fields()
+        return _schema
+    
+    @property
+    def stream_maps(self) -> list[StreamMap]:
+        """Get stream transformation maps.
+
+        The 0th item is the primary stream map. List should not be empty.
+
+        Returns:
+            A list of one or more map transformations for this stream.
+        """
+        if self._stream_maps:
+            return self._stream_maps
+
+        self.logger.info(
+            "No custom mapper provided for '%s'. Using SameRecordTransform.",
+            self.name,
+        )
+        self._stream_maps = [
+            SameRecordTransform(
+                stream_alias=self.name,
+                raw_schema=self.schema,
+                key_properties=self.primary_keys,
+                flattening_options=get_flattening_options(self.config),
+            ),
+        ]
+        return self._stream_maps
+    
+    def _update_schema_with_custom_fields(self):
+        for stream in self.config.get('custom_fields'):
+            if self.name == stream['name']:
+                for field in stream['fields']:
+                    # Tweak with internal variable for schema property
+                    # TODO: add custom data type mapping
+                    self._schema['properties'].update({field: {'type': ['string', 'null']}})
+        self._is_schema_updated = True
+
     def get_new_paginator(self):
         """Method for handling the pagination."""
         return SaaSOpticsNumberPaginator(start_value=1)
@@ -108,21 +151,12 @@ class SaaSOpticsStream(RESTStream):
             params[self.incremental_key] = self.get_starting_replication_key_value(context)
         return params
 
-    def _update_schema_with_custom_fields(self, keys):
-        for prefix in self.config.get('custom_field_prefix'):
-            for key in keys:
-                if key.startswith(prefix) and key not in self._schema['properties']:
-                    # Tweak with internal variable for schema property
-                    # TODO: add custom data type mapping
-                    self._schema['properties'].update({key: {'type': ['string', 'null']}})
-        self._is_schema_updated = True
-
     def post_process(
         self,
         row: dict,
         context: dict | None = None,  # noqa: ARG002
     ) -> dict | None:
-        """Use a single record to update schema with custom fields and transform string decimals to float.
+        """Transform string decimals to float.
 
         Args:
             row: An individual record from the stream.
@@ -131,9 +165,6 @@ class SaaSOpticsStream(RESTStream):
         Returns:
             The updated record dictionary, or ``None`` to skip the record.
         """
-        if not self._is_schema_updated and self.config.get('custom_field_prefix'):
-            self._update_schema_with_custom_fields(row.keys())
-
         # Do an transformation of string to float
         for col_name, value in row.items():
             if col_name in self.convert_to_float:
