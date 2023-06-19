@@ -84,7 +84,7 @@ class Tapsaasoptics(Tap):
         Returns:
             A list of discovered streams.
         """
-        return [stream(tap=self) for stream in STREAM_TYPES if stream == streams.ContractsStream]
+        return [stream(tap=self) for stream in STREAM_TYPES]
 
 
 if __name__ == "__main__":
